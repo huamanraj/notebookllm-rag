@@ -4,7 +4,7 @@ import { notebooks, sources } from '@/lib/db/schema';
 import { auth } from '@clerk/nextjs/server';
 import { eq, and } from 'drizzle-orm';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
