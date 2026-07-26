@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ChaiBook - AI Research Assistant
 
-## Getting Started
+An AI-powered research assistant inspired by Gemini Notebook that allows users to upload multiple knowledge sources, ask questions grounded in those sources, and receive answers with proper citations.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Multiple Notebooks**: Create and manage multiple isolated knowledge bases.
+- **Source Ingestion**: Upload PDF, Text, Web URLs, and YouTube videos.
+- **RAG Pipeline**: Fully functional Retrieval-Augmented Generation using LangChain, OpenAI, and pgvector.
+- **Grounding and Citations**: All answers cite the specific chunks they were sourced from.
+- **Modern UI**: Dark-mode only responsive UI built with Next.js App Router, TailwindCSS v4, and Shadcn UI.
+- **Authentication**: Seamless Google Auth provided by better-auth.
+- **State Management**: Zustand for managing notebooks state on the client side.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup Instructions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Install dependencies**:
+   \`\`\`bash
+   bun install
+   \`\`\`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Environment Variables**:
+   Copy `.env.example` to `.env` and fill in the following:
+   - `DATABASE_URL`: A PostgreSQL connection string (must have `pgvector` extension installed).
+   - `OPENAI_API_KEY`: Your OpenAI API Key.
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: Your Google OAuth credentials for Authentication.
+   - `BETTER_AUTH_SECRET`: A secure random string.
+   - `NEXT_PUBLIC_APP_URL`: Your app's base URL (e.g. `http://localhost:3000`).
 
-## Learn More
+3. **Database Migration**:
+   We use Drizzle ORM. Ensure your Postgres database has the `pgvector` extension enabled. 
+   Generate and push the schema:
+   \`\`\`bash
+   bunx drizzle-kit push
+   \`\`\`
 
-To learn more about Next.js, take a look at the following resources:
+4. **Run the Application**:
+   \`\`\`bash
+   bun run dev
+   \`\`\`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Architecture & Code Quality
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Database**: Drizzle ORM connected to PostgreSQL. `schema.ts` defines all tables (`users`, `notebooks`, `sources`, `documents`). We use a custom vector type for embeddings.
+- **Authentication**: `better-auth` simplifies Google OAuth, keeping session logic separate and clean.
+- **RAG Implementation**: 
+  - On upload, documents are parsed depending on type (`pdf-parse`, `cheerio`, `youtube-transcript`).
+  - LangChain `RecursiveCharacterTextSplitter` chunks the text.
+  - Vercel AI SDK `embedMany` generates embeddings using `text-embedding-3-small`.
+  - Embeddings are stored in Postgres using `pgvector`.
+- **Chat**: 
+  - Next.js API Route uses vector similarity search in SQL to fetch Top-5 relevant chunks.
+  - `streamText` from Vercel AI SDK streams the response with `gpt-4o-mini`, appending a strict system prompt to always cite sources.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Important Note for Vector DB
+When setting up PostgreSQL, you must enable the vector extension:
+\`\`\`sql
+CREATE EXTENSION IF NOT EXISTS vector;
+\`\`\`
